@@ -85,12 +85,6 @@ class NormalGeneration():
         pcd.estimate_normals(
             search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=15))
 
-        o3d.visualization.draw_geometries([pcd],
-                                          zoom=0.3412,
-                                          front=[0.4257, -0.2125, -0.8795],
-                                          lookat=[2.6172, 2.0475, 1.532],
-                                          up=[-0.0694, -0.9768, 0.2024],
-                                          point_show_normal=True)
         pcd.normalize_normals()
         normal = np.asarray(pcd.normals)[:self.size[0] * self.size[1], :].reshape((self.size[0], self.size[1], 3))
         return normal
