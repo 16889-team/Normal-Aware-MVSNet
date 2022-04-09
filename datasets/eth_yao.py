@@ -5,7 +5,7 @@ from PIL import Image
 from datasets.data_io import *
 
 
-# the DTU dataset preprocessed by Yao Yao (only for training)
+# the DTU dataset preprocessed by Yao Yao
 class MVSDataset(Dataset):
     def __init__(self, datapath, listfile, mode, nviews, ndepths=192, interval_scale=1.06, **kwargs):
         super(MVSDataset, self).__init__()

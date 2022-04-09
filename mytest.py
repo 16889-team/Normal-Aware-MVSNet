@@ -19,10 +19,10 @@ import sys
 import datetime
 
 
-# dataset, dataloader
-MVSDataset = find_dataset_def('dtu_yao')
-train_dataset = MVSDataset( "datasets/mvs_training/eth/forest", 'lists/dtu/train.txt', 'train', 3, 128) 
-item = train_dataset[50]['imgs']
+# # dataset, dataloader
+# MVSDataset = find_dataset_def('dtu_yao')
+# train_dataset = MVSDataset( "datasets/mvs_training/eth/forest", 'lists/dtu/train.txt', 'train', 3, 128)
+# item = train_dataset[50]['imgs']
 
 # # test homography here
 # print(item.keys())
@@ -64,3 +64,4 @@ item = train_dataset[50]['imgs']
 # cv2.imwrite('../tmp0.png', ref_img[:, :, ::-1] * 255)
 # cv2.imwrite('../tmp1.png', warped[:, :, ::-1] * 255)
 # cv2.imwrite('../tmp2.png', src_imgs[0][:, :, ::-1] * 255)
+
