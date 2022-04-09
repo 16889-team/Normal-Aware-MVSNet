@@ -2,7 +2,7 @@
 
 Pre-trained dataset download from MVSnet original author: https://github.com/YoYo000/MVSNet#download
 
-# How to generate ground truth normal maps (make sure you have installed open3d)
+# How to generate ground truth normal maps (make sure you have downloaded the prepossed dataset and installed open3d)
 
 In this dir, run 
 
