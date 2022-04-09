@@ -6,6 +6,6 @@ Pre-trained dataset download from MVSnet original author: https://github.com/YoY
 
 In this dir, run 
 
-'''
+```
 !python normal_generation.py --nviews 3/5/7 --datapath eth3d//delivery_area or electro or forest or playground or terrains
-'''
+```
