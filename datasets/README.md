@@ -1,6 +1,8 @@
 # Dataset
 
-Pre-trained dataset download from MVSnet original author: https://github.com/YoYo000/MVSNet#download
+Pre-processed ETH3D dataset available at https://cmu.box.com/s/mk4w3tspxrn49r2fzbr3x98pi3g2v60f
+
+Download and unzip at `datasets`, the path would be `datasets/MVS_dataset/eth3d/....`
 
 # How to generate ground truth normal maps (make sure you have downloaded the prepossed dataset and installed open3d)
 
