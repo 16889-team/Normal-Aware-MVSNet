@@ -18,24 +18,24 @@ import gc
 import sys
 import datetime
 
-cudnn.benchmark = True
+cudnn.benchmark = True # A bool that, if True, causes cuDNN to benchmark multiple convolution algorithms and select the fastest.
 
 parser = argparse.ArgumentParser(description='A PyTorch Implementation of MVSNet')
-parser.add_argument('--mode', default='train', help='train or test', choices=['train', 'test', 'profile'])
+parser.add_argument('--mode', default='train', help='train or val', choices=['train', 'val', 'profile'])
 parser.add_argument('--model', default='mvsnet', help='select model')
 
-parser.add_argument('--dataset', default='dtu_yao', help='select dataset')
-parser.add_argument('--trainpath', help='train datapath')
-parser.add_argument('--testpath', help='test datapath')
-parser.add_argument('--trainlist', help='train list')
-parser.add_argument('--testlist', help='test list')
+parser.add_argument('--dataset', default='eth_yao', help='select dataset')
+parser.add_argument('--trainpath', default = 'datasets/MVS_dataset', help='train datapath')
+parser.add_argument('--valpath', default = 'datasets/MVS_dataset', help='val datapath')
+# parser.add_argument('--trainlist', help='train list')
+# parser.add_argument('--vallist', help='val list')
 
 parser.add_argument('--epochs', type=int, default=16, help='number of epochs to train')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lrepochs', type=str, default="10,12,14:2", help='epoch ids to downscale lr and the downscale rate')
 parser.add_argument('--wd', type=float, default=0.0, help='weight decay')
 
-parser.add_argument('--batch_size', type=int, default=12, help='train batch size')
+parser.add_argument('--batch_size', type=int, default=1, help='train batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 parser.add_argument('--interval_scale', type=float, default=1.06, help='the number of depth values')
 
@@ -52,13 +52,13 @@ args = parser.parse_args()
 if args.resume:
     assert args.mode == "train"
     assert args.loadckpt is None
-if args.testpath is None:
-    args.testpath = args.trainpath
+if args.valpath is None:
+    args.valpath = args.trainpath
 
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
 
-# create logger for mode "train" and "testall"
+# create logger for mode "train" and "valall"
 if args.mode == "train":
     if not os.path.isdir(args.logdir):
         os.mkdir(args.logdir)
@@ -74,14 +74,16 @@ print_args(args)
 
 # dataset, dataloader
 MVSDataset = find_dataset_def(args.dataset)
-train_dataset = MVSDataset(args.trainpath, args.trainlist, "train", 3, args.numdepth, args.interval_scale)
-test_dataset = MVSDataset(args.testpath, args.testlist, "test", 5, args.numdepth, args.interval_scale)
-TrainImgLoader = DataLoader(train_dataset, args.batch_size, shuffle=True, num_workers=8, drop_last=True)
-TestImgLoader = DataLoader(test_dataset, args.batch_size, shuffle=False, num_workers=4, drop_last=False)
 
+train_dataset = MVSDataset(args.trainpath, "train", 5, args.numdepth, args.interval_scale)
+val_dataset = MVSDataset(args.valpath, "val", 5, args.numdepth, args.interval_scale)
+
+TrainImgLoader = DataLoader(train_dataset, args.batch_size, shuffle=True, num_workers=8, drop_last=True)
+valImgLoader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=4, drop_last=False)
+print('------+++++++_______________')
 # model, optimizer
 model = MVSNet(refine=False)
-if args.mode in ["train", "test"]:
+if args.mode in ["train", "val"]:
     model = nn.DataParallel(model)
 model.cuda()
 model_loss = mvsnet_loss
@@ -89,10 +91,10 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weigh
 
 # load parameters
 start_epoch = 0
-if (args.mode == "train" and args.resume) or (args.mode == "test" and not args.loadckpt):
+if (args.mode == "train" and args.resume) or (args.mode == "val" and not args.loadckpt):
     saved_models = [fn for fn in os.listdir(args.logdir) if fn.endswith(".ckpt")]
     saved_models = sorted(saved_models, key=lambda x: int(x.split('_')[-1].split('.')[0]))
-    # use the latest checkpoint file
+    # use the laval checkpoint file
     loadckpt = os.path.join(args.logdir, saved_models[-1])
     print("resuming", loadckpt)
     state_dict = torch.load(loadckpt)
@@ -143,38 +145,38 @@ def train():
                 'optimizer': optimizer.state_dict()},
                 "{}/model_{:0>6}.ckpt".format(args.logdir, epoch_idx))
 
-        # testing
-        avg_test_scalars = DictAverageMeter()
-        for batch_idx, sample in enumerate(TestImgLoader):
+        # valing
+        avg_val_scalars = DictAverageMeter()
+        for batch_idx, sample in enumerate(valImgLoader):
             start_time = time.time()
             global_step = len(TrainImgLoader) * epoch_idx + batch_idx
             do_summary = global_step % args.summary_freq == 0
-            loss, scalar_outputs, image_outputs = test_sample(sample, detailed_summary=do_summary)
+            loss, scalar_outputs, image_outputs = val_sample(sample, detailed_summary=do_summary)
             if do_summary:
-                save_scalars(logger, 'test', scalar_outputs, global_step)
-                save_images(logger, 'test', image_outputs, global_step)
-            avg_test_scalars.update(scalar_outputs)
+                save_scalars(logger, 'val', scalar_outputs, global_step)
+                save_images(logger, 'val', image_outputs, global_step)
+            avg_val_scalars.update(scalar_outputs)
             del scalar_outputs, image_outputs
-            print('Epoch {}/{}, Iter {}/{}, test loss = {:.3f}, time = {:3f}'.format(epoch_idx, args.epochs, batch_idx,
-                                                                                     len(TestImgLoader), loss,
+            print('Epoch {}/{}, Iter {}/{}, val loss = {:.3f}, time = {:3f}'.format(epoch_idx, args.epochs, batch_idx,
+                                                                                     len(valImgLoader), loss,
                                                                                      time.time() - start_time))
-        save_scalars(logger, 'fulltest', avg_test_scalars.mean(), global_step)
-        print("avg_test_scalars:", avg_test_scalars.mean())
+        save_scalars(logger, 'fullval', avg_val_scalars.mean(), global_step)
+        print("avg_val_scalars:", avg_val_scalars.mean())
         # gc.collect()
 
 
-def test():
-    avg_test_scalars = DictAverageMeter()
-    for batch_idx, sample in enumerate(TestImgLoader):
+def val():
+    avg_val_scalars = DictAverageMeter()
+    for batch_idx, sample in enumerate(valImgLoader):
         start_time = time.time()
-        loss, scalar_outputs, image_outputs = test_sample(sample, detailed_summary=True)
-        avg_test_scalars.update(scalar_outputs)
+        loss, scalar_outputs, image_outputs = val_sample(sample, detailed_summary=True)
+        avg_val_scalars.update(scalar_outputs)
         del scalar_outputs, image_outputs
-        print('Iter {}/{}, test loss = {:.3f}, time = {:3f}'.format(batch_idx, len(TestImgLoader), loss,
+        print('Iter {}/{}, val loss = {:.3f}, time = {:3f}'.format(batch_idx, len(valImgLoader), loss,
                                                                     time.time() - start_time))
         if batch_idx % 100 == 0:
-            print("Iter {}/{}, test results = {}".format(batch_idx, len(TestImgLoader), avg_test_scalars.mean()))
-    print("final", avg_test_scalars)
+            print("Iter {}/{}, val results = {}".format(batch_idx, len(valImgLoader), avg_val_scalars.mean()))
+    print("final", avg_val_scalars)
 
 
 def train_sample(sample, detailed_summary=False):
@@ -207,7 +209,7 @@ def train_sample(sample, detailed_summary=False):
 
 
 @make_nograd_func
-def test_sample(sample, detailed_summary=True):
+def val_sample(sample, detailed_summary=True):
     model.eval()
 
     sample_cuda = tocuda(sample)
@@ -236,14 +238,14 @@ def test_sample(sample, detailed_summary=True):
 
 def profile():
     warmup_iter = 5
-    iter_dataloader = iter(TestImgLoader)
+    iter_dataloader = iter(valImgLoader)
 
     @make_nograd_func
     def do_iteration():
         torch.cuda.synchronize()
         torch.cuda.synchronize()
         start_time = time.perf_counter()
-        test_sample(next(iter_dataloader), detailed_summary=True)
+        val_sample(next(iter_dataloader), detailed_summary=True)
         torch.cuda.synchronize()
         end_time = time.perf_counter()
         return end_time - start_time
@@ -268,7 +270,7 @@ def profile():
 if __name__ == '__main__':
     if args.mode == "train":
         train()
-    elif args.mode == "test":
-        test()
+    elif args.mode == "val":
+        val()
     elif args.mode == "profile":
         profile()

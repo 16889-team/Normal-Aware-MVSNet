@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from data_io import read_pfm, save_pfm
+from data_io import read_pfm
 import cv2
 import open3d as o3d
 from sklearn.preprocessing import normalize
@@ -69,26 +69,24 @@ class NormalGeneration():
         all_pcd = o3d.geometry.PointCloud()
         for pair in pairs:
             cam_info, depth = pair
+            cv2.imwrite('depth.png', depth)
+
             depth_o3d = o3d.geometry.Image(depth)
-            intrinsics, extrinsics, depth_min, _ = cam_info
+            intrinsics, extrinsics, _, _ = cam_info
             o3d_intrinsics = o3d.camera.PinholeCameraIntrinsic(width=self.size[0], height=self.size[1],
                                                                fx=intrinsics[0][0], fy=intrinsics[1][1],
                                                                cx=intrinsics[0][2], cy=intrinsics[1][2])
             pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_o3d, o3d_intrinsics, extrinsics,
-                                                                  depth_scale=1,
-                                                                  depth_trunc=np.asarray(depth_min),
                                                                   project_valid_depth_only=False)
             all_pcd += pcd
         return all_pcd
 
-    def generate_normal(self, pcd, depth):
-        mask = np.ones_like(depth)
-        mask[np.where(depth < 1.4)] = 0
-        mask = mask[:, :, np.newaxis].repeat(3, axis=2)
-        pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=60))
+    def generate_normal(self, pcd):
+        pcd.estimate_normals(
+            search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=15))
+
         pcd.normalize_normals()
-        normal = (np.asarray(pcd.normals)[:self.size[0] * self.size[1], :].reshape(
-            (self.size[0], self.size[1], 3)) * mask).astype(np.float32)
+        normal = np.asarray(pcd.normals)[:self.size[0] * self.size[1], :].reshape((self.size[0], self.size[1], 3))
         return normal
 
     def generation(self):
@@ -103,19 +101,18 @@ class NormalGeneration():
             all_pair.append([ref_cam, ref_depth])
             for j in range(self.nviews):
                 src_view = src_views[j]
-                print(src_view)
                 src_cam, src_depth = self.read_cam_depth(src_view)
                 all_pair.append([src_cam, src_depth])
             pcd = self.generate_pcd(all_pair)
-            normal = self.generate_normal(pcd, ref_depth)
+            normal = self.generate_normal(pcd)
             cam_path, idx_path = str.split(os.path.splitext(self.index2prefix[ref_view])[0], '/')
             normals_path = os.path.join(self.datapath, 'normals')
-            normal_idx_path = os.path.join(normals_path, os.path.join(cam_path, '{}.pfm'.format(idx_path)))
+            normal_idx_path = os.path.join(normals_path, os.path.join(cam_path, '{}.png'.format(idx_path)))
             if not os.path.exists(normals_path):
                 os.makedirs(normals_path)
             if not os.path.exists(os.path.join(normals_path, cam_path)):
                 os.makedirs(os.path.join(normals_path, cam_path))
-            save_pfm(normal_idx_path, normal)
+            cv2.imwrite(normal_idx_path, normal)
         print("Generation is done")
         return
 
