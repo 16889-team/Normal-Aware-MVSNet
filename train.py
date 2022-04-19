@@ -24,23 +24,23 @@ parser = argparse.ArgumentParser(description='A PyTorch Implementation of MVSNet
 parser.add_argument('--mode', default='train', help='train or val', choices=['train', 'val', 'profile'])
 parser.add_argument('--model', default='mvsnet', help='select model')
 
-parser.add_argument('--dataset', default='eth_yao', help='select dataset')
+parser.add_argument('--dataset', default='eth_mvsnet', help='select dataset')
 parser.add_argument('--trainpath', default = 'datasets/MVS_dataset', help='train datapath')
 parser.add_argument('--valpath', default = 'datasets/MVS_dataset', help='val datapath')
 # parser.add_argument('--trainlist', help='train list')
 # parser.add_argument('--vallist', help='val list')
 
-parser.add_argument('--epochs', type=int, default=16, help='number of epochs to train')
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+parser.add_argument('--epochs', type=int, default=32, help='number of epochs to train')
+parser.add_argument('--lr', type=float, default=0.0007, help='learning rate')
 parser.add_argument('--lrepochs', type=str, default="10,12,14:2", help='epoch ids to downscale lr and the downscale rate')
 parser.add_argument('--wd', type=float, default=0.0, help='weight decay')
 
-parser.add_argument('--batch_size', type=int, default=1, help='train batch size')
+parser.add_argument('--batch_size', type=int, default=16, help='train batch size')
 parser.add_argument('--numdepth', type=int, default=192, help='the number of depth values')
 parser.add_argument('--interval_scale', type=float, default=1.06, help='the number of depth values')
 
 parser.add_argument('--loadckpt', default=None, help='load a specific checkpoint')
-parser.add_argument('--logdir', default='./checkpoints/debug', help='the directory to save checkpoints/logs')
+parser.add_argument('--logdir', default='./checkpoints/refine', help='the directory to save checkpoints/logs')
 parser.add_argument('--resume', action='store_true', help='continue to train the model')
 
 parser.add_argument('--summary_freq', type=int, default=20, help='print and summary frequency')
@@ -80,9 +80,9 @@ val_dataset = MVSDataset(args.valpath, "val", 5, args.numdepth, args.interval_sc
 
 TrainImgLoader = DataLoader(train_dataset, args.batch_size, shuffle=True, num_workers=8, drop_last=True)
 valImgLoader = DataLoader(val_dataset, args.batch_size, shuffle=False, num_workers=4, drop_last=False)
-print('------+++++++_______________')
+
 # model, optimizer
-model = MVSNet(refine=False)
+model = MVSNet(refine=True)
 if args.mode in ["train", "val"]:
     model = nn.DataParallel(model)
 model.cuda()
@@ -124,6 +124,8 @@ def train():
 
         # training
         for batch_idx, sample in enumerate(TrainImgLoader):
+            # print(sample)
+            # exit()
             start_time = time.time()
             global_step = len(TrainImgLoader) * epoch_idx + batch_idx
             do_summary = global_step % args.summary_freq == 0
@@ -131,6 +133,7 @@ def train():
             if do_summary:
                 save_scalars(logger, 'train', scalar_outputs, global_step)
                 save_images(logger, 'train', image_outputs, global_step)
+                print(image_outputs)
             del scalar_outputs, image_outputs
             print(
                 'Epoch {}/{}, Iter {}/{}, train loss = {:.3f}, time = {:.3f}'.format(epoch_idx, args.epochs, batch_idx,
@@ -144,6 +147,7 @@ def train():
                 'model': model.state_dict(),
                 'optimizer': optimizer.state_dict()},
                 "{}/model_{:0>6}.ckpt".format(args.logdir, epoch_idx))
+            
 
         # valing
         avg_val_scalars = DictAverageMeter()

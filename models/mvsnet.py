@@ -59,13 +59,22 @@ class CostRegNet(nn.Module):
         self.prob = nn.Conv3d(8, 1, 3, stride=1, padding=1)
 
     def forward(self, x):
+        # print(x.shape)
         conv0 = self.conv0(x)
+        # print(conv0.shape)
         conv2 = self.conv2(self.conv1(conv0))
+        # print(conv2.shape)
         conv4 = self.conv4(self.conv3(conv2))
+        # print(conv4.shape)
         x = self.conv6(self.conv5(conv4))
-        x = conv4 + self.conv7(x)
-        x = conv2 + self.conv9(x)
-        x = conv0 + self.conv11(x)
+
+        x = conv4 + self.conv7(x)[:,:,:,:,:-1]
+        # print(conv2.shape)
+        # print(self.conv9(x).shape)
+        x = conv2 + self.conv9(x)[:,:,:,:,:-1]
+        # print(conv0.shape)
+        # print(self.conv11(x).shape)
+        x = conv0 + self.conv11(x)[:,:,:,:,:-1]
         x = self.prob(x)
         return x
 
@@ -79,7 +88,7 @@ class RefineNet(nn.Module):
         self.res = ConvBnReLU(32, 1)
 
     def forward(self, img, depth_init):
-        concat = F.cat((img, depth_init), dim=1)
+        concat = torch.cat((img, depth_init), dim=1)
         depth_residual = self.res(self.conv3(self.conv2(self.conv1(concat))))
         depth_refined = depth_init + depth_residual
         return depth_refined
@@ -130,7 +139,7 @@ class MVSNet(nn.Module):
 
         # step 3. cost volume regularization
         cost_reg = self.cost_regularization(volume_variance)
-        # cost_reg = F.upsample(cost_reg, [num_depth * 4, img_height, img_width], mode='trilinear')
+        cost_reg = F.upsample(cost_reg, [num_depth, img_height, img_width], mode='trilinear')
         cost_reg = cost_reg.squeeze(1)
         prob_volume = F.softmax(cost_reg, dim=1)
         depth = depth_regression(prob_volume, depth_values=depth_values)
@@ -143,12 +152,19 @@ class MVSNet(nn.Module):
 
         # step 4. depth map refinement
         if not self.refine:
+            
             return {"depth": depth, "photometric_confidence": photometric_confidence}
         else:
-            refined_depth = self.refine_network(torch.cat((imgs[0], depth), 1))
+            # print(imgs[0].shape)
+            # print(depth.shape)
+            # print(torch.cat((imgs[0],  ), 1).shape)
+            refined_depth = self.refine_network(imgs[0], torch.unsqueeze(depth, 1))
             return {"depth": depth, "refined_depth": refined_depth, "photometric_confidence": photometric_confidence}
 
 
 def mvsnet_loss(depth_est, depth_gt, mask):
     mask = mask > 0.5
+    # print(depth_est.shape)
+    # print(depth_gt.shape)
+
     return F.smooth_l1_loss(depth_est[mask], depth_gt[mask], size_average=True)

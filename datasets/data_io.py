@@ -95,8 +95,8 @@ def resize_img(filepath):
     im = Image.open(filepath)
     # im = cv2.imread(filepath)
     # print(im.shape)
-    if im.size != (900, 500):
-        im = im.resize((900, 500))
+    if im.size != (225, 125):
+        im = im.resize((225, 125))
         im.save(filepath)
 
 def resize_depth(filepath):
@@ -105,8 +105,8 @@ def resize_depth(filepath):
     '''
     data, _  = read_pfm(filepath)
     cv2.imwrite('depth.png', data)
-    dim = (900, 500)
-    if data.size != (900, 500):
+    dim = (225, 125)
+    if data.size != (225, 125):
         resized = cv2.resize(data, dim, interpolation = cv2.INTER_AREA)
         resized_arr = np.array(resized)
         save_pfm(filepath, resized_arr, scale=1)
@@ -184,8 +184,8 @@ def main():
                                 # resize depth image
                                 resize_depth(path_to_image)
                                 # create mask
-                                if path_to_image.replace('.pfm', '.png') not in path_to_images:
-                                    create_mask(path_to_image, path_to_image.replace('.pfm', '.png'))
+                                # if path_to_image.replace('.pfm', '.png') not in path_to_images:
+                                create_mask(path_to_image, path_to_image.replace('.pfm', '.png'))
                                 # create normal map
                                 create_normal(path_to_image, path_to_image.replace('depths','normals'))
 
@@ -203,7 +203,7 @@ def create_normal(filepath, outpath):
     '''
     depth, _  = read_pfm(filepath)
     depth *= 1000
-    depth_resized = cv2.resize(depth, (900, 500))
+    depth_resized = cv2.resize(depth, (225, 125))
     # depth = cv2.GaussianBlur(depth_resized, [3,3], cv2.BORDER_DEFAULT) # not helping
     zy, zx = np.gradient(depth)  
     normal = np.dstack((-zx, -zy, np.ones_like(depth)))
@@ -220,9 +220,10 @@ def create_normal(filepath, outpath):
 
     return 
 
-if __name__ == "__main__":
 
-    main()
+# if __name__ == "__main__":
+
+    # main()
 
     # visualize_depth('MVS_dataset/eth3d/train/delivery_area/depths/images_rig_cam4/1477843917481127523.pfm')
     # create_normal('MVS_dataset/eth3d/train/forest/depths/images_rig_cam4/1474982922066603972.pfm', 'test.pfm')
