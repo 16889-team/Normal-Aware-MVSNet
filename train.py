@@ -248,7 +248,6 @@ def val_sample(sample, detailed_summary=True):
         proj_mat = sample_cuda['proj_mat']
         i_inv = sample_cuda['intrinsics_inv']
         depth_values = sample_cuda['depth_values']
-
         outputs = model(imgs, proj_mat, i_inv, depth_values)
 
         depth_est = outputs["depth"]
