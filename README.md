@@ -22,6 +22,8 @@ Currently, we only test the low-resolution datasets and batch_size is set to be 
 python train.py --mode train/val --batch_size 16 --alpha 0.2 --beta 3 --gamma 0.2
 ```
 
+You can see the training result in checkpoints/log.
+
 ## Acknowledgement
 This project heavily relies codes from [MVSNet-pytorch](https://github.com/xy-guo/MVSNet_pytorch) and insipred by [NAS](https://github.com/udaykusupati/Normal-Assisted-Stereo) and we thank the authors for releasing their code.
 
