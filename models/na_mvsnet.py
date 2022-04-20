@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from .module import *
@@ -64,9 +65,9 @@ class CostRegNet(nn.Module):
         conv2 = self.conv2(self.conv1(conv0))
         conv4 = self.conv4(self.conv3(conv2))
         x = self.conv6(self.conv5(conv4))
-        x = conv4 + self.conv7(x)
-        x = conv2 + self.conv9(x)
-        x = conv0 + self.conv11(x)
+        x = conv4 + self.conv7(x)[:, :, :, :, :-1]
+        x = conv2 + self.conv9(x)[:, :, :, :, :-1]
+        x = conv0 + self.conv11(x)[:, :, :, :, :-1]
         x = self.prob(x)
         return x
 
@@ -80,9 +81,24 @@ class NormalNet(nn.Module):
                                   pad=(0, 1, 1))
         self.pool3 = ConvBnReLU3D(in_channels=32, out_channels=32, kernel_size=(2, 3, 3), stride=(2, 1, 1),
                                   pad=(0, 1, 1))
+
         self.wc0 = nn.Sequential(
-            ConvBnReLU3D(64 + 3, 32, 3, 1, 1),
+            ConvBnReLU3D(32 + 3, 32, 3, 1, 1),
             ConvBnReLU3D(32, 32, 3, 1, 1),
+        )
+
+        self.cconvs_nfea = nn.Sequential(
+            ConvText(64, 32, 3, 1, 1), ConvText(32, 32, 3, 1, 1)
+        )
+        self.n_convs0 = nn.Sequential(
+            ConvText(32, 96, 3, 1, 1),
+            ConvText(96, 96, 3, 1, 2),
+            ConvText(96, 96, 3, 1, 4),
+            ConvText(96, 64, 3, 1, 8),
+            ConvText(64, 64, 3, 1, 16)
+        )
+        self.n_convs1 = nn.Sequential(
+            ConvText(64, 32, 3, 1, 1), ConvText(32, 3, 3, 1, 1)
         )
 
     def forward(self, feature, no_pool=False):
@@ -110,14 +126,16 @@ class NormalNet(nn.Module):
 class NA_MVSNet(nn.Module):
     def __init__(self, min_depth=1.4):
         super(NA_MVSNet, self).__init__()
-        self.refine = refine
         self.feature = FeatureNet()
         self.cost_regularization = CostRegNet()
         self.normal_regression = NormalNet()
         self.min_depth = min_depth
 
     def forward(self, imgs, proj_matrices, intrinsics_inv, depth_values):
-        imgs = torch.unbind(imgs, 1)
+        ndepths = depth_values.shape[1]
+
+        imgs = imgs.permute(0, 1, 4, 2, 3)
+        imgs = torch.unbind(imgs, 1)  # list len = nviews  [B, height, width, 3]
         proj_matrices = torch.unbind(proj_matrices, 1)
         assert len(imgs) == len(proj_matrices), "Different number of images and projection matrices"
         img_height, img_width = imgs[0].shape[2], imgs[0].shape[3]
@@ -154,25 +172,28 @@ class NA_MVSNet(nn.Module):
         b, ch, d, h, w = volume_variance.size()
         with torch.no_grad():
             intrinsics_inv[:, :2, :2] = intrinsics_inv[:, :2, :2] * (4)
-            disp2depth = Variable(torch.ones(b, h, w).cuda() * self.mindepth * self.nlabel).cuda()
-            disps = Variable(torch.linspace(
-                (0, num_depth - 1, num_depth).view(1, num_depth, 1, 1).expand(b, num_depth, h, w)).type_as(
-                disp2depth))
+            disp2depth = Variable(torch.ones(b, h, w).cuda() * self.min_depth * ndepths).cuda()
+            disps = Variable(
+                torch.linspace(0, ndepths - 1, ndepths).view(1, ndepths, 1, 1).expand(b, ndepths, h, w)).type_as(
+                disp2depth)
             depth = disp2depth.unsqueeze(1) / (disps + 1e-16)
-
             world_coord = pixel2cam(depth, intrinsics_inv)
             world_coord = world_coord.squeeze(-1)  # B x 3 x D x H x W
             world_coord = world_coord / (2 * num_depth * self.min_depth)
 
         world_coord = world_coord.clamp(-1, 1)
-        world_coord = torch.cat((world_coord.clone(), volume_variance))  # B x (3+F) x D x H x W
+        world_coord = torch.cat((world_coord.clone(), volume_variance), dim=1)  # B x (3+F) x D x H x W
         world_coord = world_coord.contiguous()
-
         nmap = self.normal_regression(world_coord)
+
+        # upsampel to original size
+        nmap = F.interpolate(nmap, [img_height, img_width], mode='bilinear', align_corners=False)
+        nmap = nmap.permute(0, 2, 3, 1)
+        nmap = F.normalize(nmap, dim=-1)
 
         # step 4. cost volume regularization
         cost_reg = self.cost_regularization(volume_variance)
-        cost_reg = F.upsample(cost_reg, [num_depth * 4, img_height, img_width], mode='trilinear')
+        cost_reg = F.upsample(cost_reg, [num_depth, img_height, img_width], mode='trilinear')
         cost_reg = cost_reg.squeeze(1)
         prob_volume = F.softmax(cost_reg, dim=1)
         depth = depth_regression(prob_volume, depth_values=depth_values)
@@ -235,10 +256,16 @@ class ConsLoss(nn.Module):
         return grad_depth
 
     def forward(self, depth, gt_depth, nmap, intrinsics_var, mask):
+        depth = depth.unsqueeze(1)
+        gt_depth = gt_depth.unsqueeze(1)
+
+        nmap = nmap.permute(0, 3, 1, 2)
 
         true_grad_depth_1 = self.get_grad_1(gt_depth) * 100
         grad_depth_1 = self.get_grad_1(depth) * 100
         grad_depth_2 = self.get_grad_2(depth, nmap.clone(), intrinsics_var) * 100
+
+        mask = mask.unsqueeze(1)
 
         mask = (abs(true_grad_depth_1) < 1).type_as(mask) & (mask)
         mask = (abs(grad_depth_1) < 5).type_as(mask) & (abs(grad_depth_2) < 5).type_as(mask) & (mask)
@@ -254,7 +281,7 @@ def na_mvsnet_loss(items, pred_depth, pred_normal, args):
     :param pred_normal: [B, height, width, 3]
     :return: LOSS
     """
-    depth_ref = items['items']
+    depth_ref = items['depth_ref']
     depth_src = items['depth_src']
     normal_ref = items['normal_ref']
     normal_src = items['normal_src']
@@ -262,25 +289,26 @@ def na_mvsnet_loss(items, pred_depth, pred_normal, args):
     mask_src = items['mask_src']
     grid = items['grid']
     e = items['extrinsics']
-    i_inv = items['intrinsics']
+    i_inv = items['intrinsics_inv']  # [B, 3, 3]
 
     pred_normal_src, normal_masks = remap_normal(pred_normal, grid, e[:, 0], e[:, 1:])  # [B, N, height, width, 3]
     pred_depth_src, depth_masks = remap_depth(pred_depth, grid)
 
-    mask_ref = mask_ref > 0.5
-    mask_src = (mask_src > 0.5)
+    mask_ref = mask_ref == True
+    mask_src = mask_src == True
 
     mask_src_depth = mask_src * depth_masks
     mask_src_normal = mask_src * normal_masks
 
-    loss_depth_ref = F.smooth_l1_loss(pred_depth[mask_ref], depth_ref[mask_ref], size_average=True)
-    loss_depth_src = F.smooth_l1_loss(pred_depth_src[mask_src_depth], depth_src[mask_src_depth], size_average=True)
-    loss_normal_ref = F.smooth_l1_loss(pred_normal[mask_ref], normal_ref[mask_ref], size_average=True)
-    loss_normal_src = F.smooth_l1_loss(pred_normal_src[mask_src_normal], normal_src[mask_src_normal], size_average=True)
+    loss_depth_ref = F.smooth_l1_loss(pred_depth[mask_ref], depth_ref[mask_ref], reduction='mean')
+    loss_depth_src = F.smooth_l1_loss(pred_depth_src[mask_src_depth], depth_src[mask_src_depth], reduction='mean')
+    loss_normal_ref = F.smooth_l1_loss(pred_normal[mask_ref], normal_ref[mask_ref], reduction='mean')
+    loss_normal_src = F.smooth_l1_loss(pred_normal_src[mask_src_normal], normal_src[mask_src_normal], reduction='mean')
 
     cons_loss = ConsLoss().cuda()
-    cons_loss_ref = cons_loss(pred_depth, depth_ref, pred_normal, i_inv[:, 0], mask_ref)
+    cons_loss_ref = cons_loss(pred_depth, depth_ref, pred_normal, i_inv, mask_ref)
 
-    loss = loss_depth_ref + args.beta * loss_normal_ref + args.alpha * (loss_depth_src + args.beta * loss_normal_src) + args.gamma * cons_loss_ref
+    loss = loss_depth_ref + args.beta * loss_normal_ref + args.alpha * (
+            loss_depth_src + args.beta * loss_normal_src) + args.gamma * cons_loss_ref
 
     return loss

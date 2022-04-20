@@ -128,7 +128,7 @@ class MVSDataset(Dataset):
         normal_ref = None
         normal_src = []
         proj_matrices = []
-        intrinsics_inv = []
+        intrinsics_inv = None
         all_extrinsics = []
         mask_ref = None
         mask_src = []
@@ -137,8 +137,6 @@ class MVSDataset(Dataset):
 
         for i, id in enumerate(view_ids):
             # NOTE that the id in image file names is 1 indexed
-            # print(id)
-            # print(index2prefix_content[id].split()[1])
             # image path
             img_path = os.path.join(scene_path, 'images', index2prefix_content[id].split()[1])
 
@@ -162,7 +160,6 @@ class MVSDataset(Dataset):
             intrinsics, extrinsics, depth_min, depth_interval = self.read_cam_file(cam_path)
 
             all_extrinsics.append(extrinsics.copy())
-            intrinsics_inv.append(np.linalg.inv(intrinsics.copy()))
 
             # multiply intrinsics and extrinsics to get projection matrix
             proj_mat = extrinsics.copy()
@@ -172,11 +169,12 @@ class MVSDataset(Dataset):
             # our model
             if i == 0:  # reference view
                 depth_values = np.arange(depth_min, depth_interval * self.ndepths + depth_min, depth_interval,
-                                         dtype=np.float32)
+                                         dtype=np.float32)[:self.ndepths]
                 imgs_ref = self.read_img(img_path)
                 depth_ref = self.read_depth(depth_path)
                 normal_ref = self.read_normal(normal_path)
                 mask_ref = self.read_mask(mask_path)
+                intrinsics_inv = np.linalg.inv(intrinsics.copy())
             else:
                 imgs_src.append(self.read_img(img_path))
                 depth_src.append(self.read_depth(depth_path))
@@ -190,25 +188,23 @@ class MVSDataset(Dataset):
 
         proj_matrices = np.stack(proj_matrices)
         extrinsics = np.stack(all_extrinsics)
-        intrinsics_inv = np.stack(intrinsics_inv)
-
         # transform view
         grid = self.transform_view(proj_matrices[0, :, :], proj_matrices[1:, :, :], depth_src)
 
         return {
-            "imgs_ref": imgs_ref,  # (h, w, 3)
-            "depth_ref": depth_ref,  # (h, w,)
-            "normal_ref": normal_ref,  # (h, w, 3)
-            "mask_ref": mask_ref,  # (h, w) bool
-            "imgs_src": imgs_src,  # (N-1, h, w, 3)
-            "depth_src": depth_src,  # (N-1, h, w)
-            "normal_src": normal_src,  # (N-1,h, w, 3)
-            "mask_src": mask_src,  # (N-1, h, w)
-            "proj_mat": proj_matrices,  # (N, 4, 4)
-            "intrinsics_inv": intrinsics_inv, # (N, 4, 4)
-            'extrinsics': extrinsics,  # (N, 4, 4)
-            "depth_values": depth_values,
-            'grid': grid,  # [N - 1, h, w, 2]
+            "imgs_ref": imgs_ref.copy(),  # (h, w, 3)
+            "depth_ref": depth_ref.copy(),  # (h, w,)
+            "normal_ref": normal_ref.copy(),  # (h, w, 3)
+            "mask_ref": mask_ref.copy(),  # (h, w) bool
+            "imgs_src": imgs_src.copy(),  # (N-1, h, w, 3)
+            "depth_src": depth_src.copy(),  # (N-1, h, w)
+            "normal_src": normal_src.copy(),  # (N-1,h, w, 3)
+            "mask_src": mask_src.copy(),  # (N-1, h, w)
+            "proj_mat": proj_matrices.copy(),  # (N, 4, 4)
+            "intrinsics_inv": intrinsics_inv.copy(),  # (3, 3)
+            'extrinsics': extrinsics.copy(),  # (N, 4, 4)
+            "depth_values": depth_values.copy(),
+            'grid': grid.copy(),  # [N - 1, h, w, 2]
         }
 
 

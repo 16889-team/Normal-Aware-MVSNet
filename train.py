@@ -135,7 +135,6 @@ def train():
 
     for epoch_idx in range(start_epoch, args.epochs):
         print('Epoch {}:'.format(epoch_idx))
-        lr_scheduler.step()
         global_step = len(TrainImgLoader) * epoch_idx
 
         # training
@@ -178,6 +177,7 @@ def train():
                                                                                     time.time() - start_time))
         save_scalars(logger, 'fullval', avg_val_scalars.mean(), global_step)
         print("avg_val_scalars:", avg_val_scalars.mean())
+        lr_scheduler.step()
         # gc.collect()
 
 
@@ -203,13 +203,13 @@ def train_sample(sample, detailed_summary=False):
     depth_gt = sample_cuda["depth_ref"]
     mask = sample_cuda["mask_ref"]
 
-    imgs_ref = sample_cuda("imgs_ref").unsqueeze(1)  # [B, 1, h, w, 3]
-    imgs_src = sample_cuda("imgs_src")  # [B, N - 1, h, w, 3]
+    imgs_ref = sample_cuda["imgs_ref"].unsqueeze(1)  # [B, 1, h, w, 3]
+    imgs_src = sample_cuda["imgs_src"]  # [B, N - 1, h, w, 3]
     imgs = torch.cat((imgs_ref, imgs_src), dim=1)
 
-    proj_mat = sample_cuda('proj_mat')
-    i_inv = sample_cuda('intrinsics_inv')
-    depth_values = sample_cuda('depth_values')
+    proj_mat = sample_cuda['proj_mat']
+    i_inv = sample_cuda['intrinsics_inv']
+    depth_values = sample_cuda['depth_values']
 
     outputs = model(imgs, proj_mat, i_inv, depth_values)
 
@@ -221,9 +221,7 @@ def train_sample(sample, detailed_summary=False):
     optimizer.step()
 
     scalar_outputs = {"loss": loss}
-    image_outputs = {"depth_est": depth_est * mask, "depth_gt": sample["depth"],
-                     "ref_img": sample["imgs"][:, 0],
-                     "mask": sample["mask"]}
+    image_outputs = {"depth_est": depth_est * mask.float(), "depth_gt": sample["depth_ref"]}
 
     if detailed_summary:
         image_outputs["errormap"] = (depth_est - depth_gt).abs() * mask
@@ -243,8 +241,8 @@ def val_sample(sample, detailed_summary=True):
         depth_gt = sample_cuda["depth_ref"]
         mask = sample_cuda["mask_ref"]
 
-        imgs_ref = sample_cuda("imgs_ref").unsqueeze(1)  # [B, 1, h, w, 3]
-        imgs_src = sample_cuda("imgs_src")  # [B, N - 1, h, w, 3]
+        imgs_ref = sample_cuda["imgs_ref"].unsqueeze(1)  # [B, 1, h, w, 3]
+        imgs_src = sample_cuda["imgs_src"]  # [B, N - 1, h, w, 3]
         imgs = torch.cat((imgs_ref, imgs_src), dim=1)
 
         outputs = model(imgs, proj_mat, i_inv, depth_values)
@@ -255,9 +253,7 @@ def val_sample(sample, detailed_summary=True):
         loss = model_loss(sample_cuda, depth_est, normal_est, args)
 
         scalar_outputs = {"loss": loss}
-        image_outputs = {"depth_est": depth_est * mask, "depth_gt": sample["depth"],
-                         "ref_img": sample["imgs"][:, 0],
-                         "mask": sample["mask"]}
+        image_outputs = {"depth_est": depth_est * mask, "depth_gt": sample["depth_ref"]}
 
     if detailed_summary:
         image_outputs["errormap"] = (depth_est - depth_gt).abs() * mask

@@ -4,6 +4,14 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
+def ConvText(in_planes, out_planes, kernel_size=3, stride=1, dilation=1):
+    return nn.Sequential(
+        nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, dilation=dilation,
+                  padding=((kernel_size - 1) * dilation) // 2, bias=False),
+        nn.LeakyReLU(0.1, inplace=True)
+    )
+
+
 class ConvBnReLU(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, pad=1):
         super(ConvBnReLU, self).__init__()
@@ -126,7 +134,7 @@ def homo_warping(src_fea, src_proj, ref_proj, depth_values):
         grid = proj_xy
 
     warped_src_fea = F.grid_sample(src_fea, grid.view(batch, num_depth * height, width, 2), mode='bilinear',
-                                   padding_mode='zeros')
+                                   padding_mode='zeros', align_corners=False)
     warped_src_fea = warped_src_fea.view(batch, channels, num_depth, height, width)
 
     return warped_src_fea
@@ -260,7 +268,7 @@ def remap_normal(normal, grid, e_ref, es_src):
         masks.append(mask)
     normal_src = torch.cat(normal_src, dim=1)
     masks = torch.cat(masks, dim=1).to(device)
-    return normal_src, masks
+    return normal_src, masks.bool()
 
 
 def remap_depth(depth, grid):
@@ -279,13 +287,14 @@ def remap_depth(depth, grid):
 
     for i in range(N):
         mask = torch.ones(B, height, width)
-        depth_tmp = F.grid_sample(depth.unsqueeze(1), grid[:, i, :, :, :], align_corners=False)  # [B, 1, height, width]
+        depth_tmp = F.grid_sample(depth.unsqueeze(1), grid[:, i, :, :, :], align_corners=False).squeeze(1)  # [B, 1, height, width]
         mask[depth_tmp == 0] = 0
+        depth_tmp = depth_tmp.unsqueeze(1)
         depth_src.append(depth_tmp)
         masks.append(mask.unsqueeze(1))
     depth_src = torch.cat(depth_src, dim=1).to(device)
     masks = torch.cat(masks, dim=1).to(device)
-    return depth_src, masks
+    return depth_src, masks.bool()
 
 
 if __name__ == "__main__":

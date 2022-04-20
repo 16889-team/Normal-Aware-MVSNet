@@ -1,1 +1,1 @@
-from models.mvsnet import MVSNet, mvsnet_loss
+from models.na_mvsnet import NA_MVSNet, na_mvsnet_loss
