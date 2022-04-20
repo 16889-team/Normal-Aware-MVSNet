@@ -18,11 +18,14 @@ Normal Map is genertaed by the idea from [this paper](https://ieeexplore.ieee.or
 
 Currently, we only test the low-resolution datasets and batch_size is set to be 16 due to the lack of computer resources.
 
+You can do the training in your local machine with:
 ```bash
 python train.py --mode train/val --batch_size 16 --alpha 0.2 --beta 3 --gamma 0.2
 ```
 
-You can see the training result in checkpoints/log.
+Or use colab with [this](https://github.com/16889-team/Normal-Aware-MVSNet/blob/main/na_mvsnet_training.ipynb) (Remember to upload the datasets to your gdrive)
+
+You can see the training result in checkpoints/log. (With three different parameter-settings)
 
 ## Acknowledgement
 This project heavily relies codes from [MVSNet-pytorch](https://github.com/xy-guo/MVSNet_pytorch) and insipred by [NAS](https://github.com/udaykusupati/Normal-Assisted-Stereo) and we thank the authors for releasing their code.
