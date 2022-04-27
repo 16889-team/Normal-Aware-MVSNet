@@ -305,6 +305,12 @@ def na_mvsnet_loss(items, pred_depth, pred_normal, args):
     loss_normal_ref = F.smooth_l1_loss(pred_normal[mask_ref], normal_ref[mask_ref], reduction='mean')
     loss_normal_src = F.smooth_l1_loss(pred_normal_src[mask_src_normal], normal_src[mask_src_normal], reduction='mean')
 
+    # fix nan loss issue
+    if torch.isnan(loss_depth_src):
+      loss_depth_src = 0
+    if torch.isnan(loss_normal_src):
+      loss_normal_src = 0
+
     cons_loss = ConsLoss().cuda()
     cons_loss_ref = cons_loss(pred_depth, depth_ref, pred_normal, i_inv, mask_ref)
 
