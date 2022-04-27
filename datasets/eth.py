@@ -211,123 +211,116 @@ class MVSDataset(Dataset):
 if __name__ == "__main__":
     import torch
 
-    # dataset = MVSDataset('MVS_dataset', 'train', 10)
-    #
-    # item = dataset[102]
-    #
-    # for key in item.keys():
-    #     print(key)
-    #     print(item[key].shape)
-    #
-    # depth = item["depth_ref"]
-    # mask = item["mask_ref"]
+    dataset = MVSDataset('MVS_dataset', 'train', 10)
 
-    # cv2.imshow("0", depth)
-    # depth[mask] = 0.1
-    # cv2.waitKey(0)
-    # cv2.imshow("1", depth)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    item = dataset[0]
 
-    # dataset.read_mask('MVS_dataset/eth3d/train/delivery_area/depths/images_rig_cam4/1477843917481127523.png')
-    # print("imgs", item["imgs_ref"].shape)
-    # print("depth", item["depth_ref"].shape)
-    # print("depth_values", item["depth_values"].shape)
-    # print("mask", item["mask_ref"].shape)
-    #
-    # # test homography here
-    # print(item.keys())
-    # print("imgs", item["imgs_ref"].shape)
-    # print("depth", item["depth_ref"].shape)
-    # print("depth_values", item["depth_values"].shape)
-    # print("mask", item["mask_ref"].shape)
-    #
-    # ref_img = item["imgs_ref"]
-    # src_imgs = [item["imgs_src"][i] for i in range(4)]
-    # ref_proj_mat = item["proj_mat"][0]
-    # src_proj_mats = [item["proj_mat"][i] for i in range(1, 5)]
-    # mask = item["mask_src"][0]
-    # depth = item["depth_src"][0]
-    # depth_ref = item['depth_ref']
-    #
-    # normal_ref = item['normal_ref']
-    # normal_src = [item['normal_src'][i] for i in range(4)]
-    #
-    # grid = [item['grid'][i] for i in range(4)]
-    #
-    # e = [item['extrinsics'][i] for i in range(5)]
-    #
-    # e_ref = e[0]
-    # e_src = e[1]
-    #
-    # R_ref = e_ref[0:3, 0:3]
-    # R_src = e_src[0:3, 0:3]
-    #
-    # height = ref_img.shape[0]
-    # width = ref_img.shape[1]
-    # print(height, width)
-    # xx, yy = np.meshgrid(np.arange(0, width), np.arange(0, height))
-    # print("yy", yy.max(), yy.min())
-    # yy = yy.reshape([-1])
-    # xx = xx.reshape([-1])
-    #
-    # X = np.vstack((xx, yy, np.ones_like(xx)))
-    # print(X[0].max())
-    #
-    # XX = 2 * ((X[0].reshape([height, width]).astype(np.float32) / (width - 1)) - 0.5)
-    # YY = 2 * ((X[1].reshape([height, width]).astype(np.float32) / (height - 1)) - 0.5)
-    # print(np.max(YY), np.min(YY))
-    # print(np.max(XX), np.min(XX))
-    #
-    # D = depth.reshape([-1])
-    # print("X", "D", X.shape, D.shape)
-    #
-    # X = np.vstack((X * D, np.ones_like(xx)))
-    # X = np.matmul(np.linalg.inv(src_proj_mats[0]), X)
-    # X = np.matmul(ref_proj_mat, X)
-    # X /= X[2]
-    # X = X[:2]
-    #
-    # xx = 2 * ((X[0].reshape([height, width]).astype(np.float32) / (width - 1)) - 0.5)
-    # yy = 2 * ((X[1].reshape([height, width]).astype(np.float32) / (height - 1)) - 0.5)
-    # print("---------")
-    # print(np.max(yy), np.min(yy))
-    # print(np.max(xx), np.min(xx))
-    # # import cv2
-    #
-    # print(normal_ref.shape)
-    # print(R_ref.shape)
-    # normal_ref = normal_ref.reshape((-1, 3))
-    # normal_ref = np.matmul(np.linalg.inv(R_ref), normal_ref.T).T
-    # normal_ref = np.matmul(R_src, normal_ref.T).T
-    # normal_ref = normal_ref.reshape((500, 900, 3))
-    # warped = cv2.remap(normal_ref, X[0].reshape([height, width]).astype(np.float32),
-    #                    X[1].reshape([height, width]).astype(np.float32), interpolation=cv2.INTER_LINEAR)
-    #
-    # depth_ref1 = torch.from_numpy(depth_ref.copy()).unsqueeze(0).unsqueeze(3).permute(0, 3, 1, 2)
-    # # grid = torch.from_numpy(grid[0]).unsqueeze(0)
-    # # grid = np.stack((xx, yy), -1)
-    #
-    # grid = grid[0]
-    #
-    # grid0 = np.stack((XX, YY), -1)
-    #
-    # grid = torch.from_numpy(grid).unsqueeze(0)
-    # import torch.nn.functional as F
-    #
-    # warped2 = F.grid_sample(depth_ref1, grid, align_corners=False).squeeze(0).permute(1, 2, 0).numpy()
-    #
-    # warped2[mask[:, :] == 0] = 0
-    #
-    # warped[mask[:, :] == 0] = 0
-    #
-    # cv2.imwrite('../tmp0.png', normal_ref[:, :, ::-1] * 255)
-    # cv2.imwrite('../tmp1.png', warped[:, :, ::-1] * 255)
-    # cv2.imwrite('../tmp2.png', depth[:, :] * 10)
-    # cv2.imwrite('../tmp3.png', warped2[:, :] * 10)
+    for key in item.keys():
+        print(key)
+        print(item[key].shape)
 
-    x = torch.zeros((5, 10, 10))
+    depth = item["depth_ref"]
+    mask = item["mask_ref"]
 
-    zy, zx = torch.gradient(x, dim=[1, 2])
+    cv2.imshow("0", depth)
+    depth[mask] = 0.1
+    cv2.waitKey(0)
+    cv2.imshow("1", depth)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    dataset.read_mask('MVS_dataset/eth3d/train/delivery_area/depths/images_rig_cam4/1477843917481127523.png')
+    print("imgs", item["imgs_ref"].shape)
+    print("depth", item["depth_ref"].shape)
+    print("depth_values", item["depth_values"].shape)
+    print("mask", item["mask_ref"].shape)
+
+    # test homography here
+    print(item.keys())
+    print("imgs", item["imgs_ref"].shape)
+    print("depth", item["depth_ref"].shape)
+    print("depth_values", item["depth_values"].shape)
+    print("mask", item["mask_ref"].shape)
+
+    ref_img = item["imgs_ref"]
+    src_imgs = [item["imgs_src"][i] for i in range(4)]
+    ref_proj_mat = item["proj_mat"][0]
+    src_proj_mats = [item["proj_mat"][i] for i in range(1, 5)]
+    mask = item["mask_src"][0]
+    depth = item["depth_src"][0]
+    depth_ref = item['depth_ref']
+
+    normal_ref = item['normal_ref']
+    normal_src = [item['normal_src'][i] for i in range(4)]
+
+    grid = [item['grid'][i] for i in range(4)]
+
+    e = [item['extrinsics'][i] for i in range(5)]
+
+    e_ref = e[0]
+    e_src = e[1]
+
+    R_ref = e_ref[0:3, 0:3]
+    R_src = e_src[0:3, 0:3]
+
+    height = ref_img.shape[0]
+    width = ref_img.shape[1]
+    print(height, width)
+    xx, yy = np.meshgrid(np.arange(0, width), np.arange(0, height))
+    print("yy", yy.max(), yy.min())
+    yy = yy.reshape([-1])
+    xx = xx.reshape([-1])
+
+    X = np.vstack((xx, yy, np.ones_like(xx)))
+    print(X[0].max())
+
+    XX = 2 * ((X[0].reshape([height, width]).astype(np.float32) / (width - 1)) - 0.5)
+    YY = 2 * ((X[1].reshape([height, width]).astype(np.float32) / (height - 1)) - 0.5)
+    print(np.max(YY), np.min(YY))
+    print(np.max(XX), np.min(XX))
+
+    D = depth.reshape([-1])
+    print("X", "D", X.shape, D.shape)
+
+    X = np.vstack((X * D, np.ones_like(xx)))
+    X = np.matmul(np.linalg.inv(src_proj_mats[0]), X)
+    X = np.matmul(ref_proj_mat, X)
+    X /= X[2]
+    X = X[:2]
+
+    xx = 2 * ((X[0].reshape([height, width]).astype(np.float32) / (width - 1)) - 0.5)
+    yy = 2 * ((X[1].reshape([height, width]).astype(np.float32) / (height - 1)) - 0.5)
+    print("---------")
+    print(np.max(yy), np.min(yy))
+    print(np.max(xx), np.min(xx))
+    # import cv2
+
+    print(normal_ref.shape)
+    print(R_ref.shape)
+    normal_ref = normal_ref.reshape((-1, 3))
+    normal_ref = np.matmul(np.linalg.inv(R_ref), normal_ref.T).T
+    normal_ref = np.matmul(R_src, normal_ref.T).T
+    normal_ref = normal_ref.reshape((500, 900, 3))
+    warped = cv2.remap(normal_ref, X[0].reshape([height, width]).astype(np.float32),
+                       X[1].reshape([height, width]).astype(np.float32), interpolation=cv2.INTER_LINEAR)
+
+    depth_ref1 = torch.from_numpy(depth_ref.copy()).unsqueeze(0).unsqueeze(3).permute(0, 3, 1, 2)
+
+    grid = grid[0]
+
+    grid = torch.from_numpy(grid).unsqueeze(0)
+    import torch.nn.functional as F
+
+    warped2 = F.grid_sample(depth_ref1, grid, align_corners=False).squeeze(0).permute(1, 2, 0).numpy()
+
+    warped2[mask[:, :] == 0] = 0
+
+    warped[mask[:, :] == 0] = 0
+
+    cv2.imwrite('../tmp0.png', depth_ref[:, :, ::-1] * 255)
+    cv2.imwrite('../tmp1.png', warped[:, :, ::-1] * 255)
+    cv2.imwrite('../tmp2.png', depth[:, :] * 10)
+    cv2.imwrite('../tmp3.png', warped2[:, :] * 10)
+
 
 

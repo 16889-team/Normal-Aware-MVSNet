@@ -49,9 +49,9 @@ parser.add_argument('--save_freq', type=int, default=1, help='save checkpoint fr
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed')
 
 # hyperparameters for loss
-parser.add_argument('--alpha', type=float, default=0.8, help='coefficient for src images')
-parser.add_argument('--beta', type=float, default=0.5, help='coefficient for normal maps')
-parser.add_argument('--gamma', type=float, default=1.0, help='consistency loss between normal and depth')
+parser.add_argument('--alpha', type=float, default=0.1, help='coefficient for src images')
+parser.add_argument('--beta', type=float, default=3.0, help='coefficient for normal maps')
+parser.add_argument('--gamma', type=float, default=0.1, help='consistency loss between normal and depth')
 
 # mindepth
 parser.add_argument('--min_depth', type=float, default=1.4, help='min depth for camera')
