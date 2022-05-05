@@ -16,6 +16,7 @@ from models import *
 from utils import *
 import gc
 import sys
+import cv2
 import datetime
 
 cudnn.benchmark = True # A bool that, if True, causes cuDNN to benchmark multiple convolution algorithms and select the fastest.
@@ -109,6 +110,19 @@ elif args.loadckpt:
 print("start at epoch {}".format(start_epoch))
 print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in model.parameters()])))
 
+def save_pngs(data, filename):
+    if len(data.shape)==2: # depth_map, not normalized
+        data /= data.max()
+        data*=255
+        data = data.astype(np.uint8)
+        colored = cv2.applyColorMap(data, cv2.COLORMAP_JET)
+        cv2.imwrite(filename, colored)
+    if len(data.shape)==3: # normal_map, normalized
+        data*=255
+        data = data.astype(np.uint8)
+        # print('dataset')
+        # print(data.shape)
+        cv2.imwrite(filename, data.transpose(1,2,0))
 
 # main function
 def train():
@@ -133,13 +147,21 @@ def train():
             if do_summary:
                 save_scalars(logger, 'train', scalar_outputs, global_step)
                 save_images(logger, 'train', image_outputs, global_step)
-                print(image_outputs)
-            del scalar_outputs, image_outputs
+                #print(image_outputs)
+            
             print(
                 'Epoch {}/{}, Iter {}/{}, train loss = {:.3f}, time = {:.3f}'.format(epoch_idx, args.epochs, batch_idx,
                                                                                      len(TrainImgLoader), loss,
-                                                                                     time.time() - start_time))
+                                                                                      time.time() - start_time))
+            if batch_idx == 0: # save one perticular batch
+                depth_est = image_outputs["depth_est"].detach().cpu().numpy().copy()
+                depth_gt = image_outputs["depth_gt"].detach().cpu().numpy().copy()
 
+                for i in range(args.batch_size):
+                    save_pngs(depth_est[i], "results/depth_est_epoch{}_i{}.png".format(epoch_idx, i))
+                    save_pngs(depth_gt[i], "results/depth_gt_epoch{}_i{}.png".format(epoch_idx, i))
+            
+            del scalar_outputs, image_outputs
         # checkpoint
         if (epoch_idx + 1) % args.save_freq == 0:
             torch.save({

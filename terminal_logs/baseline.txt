@@ -1,0 +1,80 @@
+current time 20220505_170302
+creating new summary file
+argv: []
+################################  args  ################################
+mode      	train                         	<class 'str'>       
+model     	mvsnet                        	<class 'str'>       
+dataset   	eth_mvsnet                    	<class 'str'>       
+trainpath 	datasets/MVS_dataset          	<class 'str'>       
+valpath   	datasets/MVS_dataset          	<class 'str'>       
+epochs    	32                            	<class 'int'>       
+lr        	0.0007                        	<class 'float'>     
+lrepochs  	10,12,14:2                    	<class 'str'>       
+wd        	0.0                           	<class 'float'>     
+batch_size	16                            	<class 'int'>       
+numdepth  	192                           	<class 'int'>       
+interval_scale	1.06                          	<class 'float'>     
+loadckpt  	None                          	<class 'NoneType'>  
+logdir    	./checkpoints/refine          	<class 'str'>       
+resume    	False                         	<class 'bool'>      
+summary_freq	20                            	<class 'int'>       
+save_freq 	1                             	<class 'int'>       
+seed      	1                             	<class 'int'>       
+########################################################################
+start at epoch 0
+Number of model parameters: 358195
+Epoch 0:
+Epoch 0/32, Iter 0/99, train loss = 9.671, time = 5.666
+current time 20220505_170358
+creating new summary file
+argv: []
+################################  args  ################################
+mode      	train                         	<class 'str'>       
+model     	mvsnet                        	<class 'str'>       
+dataset   	eth_mvsnet                    	<class 'str'>       
+trainpath 	datasets/MVS_dataset          	<class 'str'>       
+valpath   	datasets/MVS_dataset          	<class 'str'>       
+epochs    	32                            	<class 'int'>       
+lr        	0.0007                        	<class 'float'>     
+lrepochs  	10,12,14:2                    	<class 'str'>       
+wd        	0.0                           	<class 'float'>     
+batch_size	16                            	<class 'int'>       
+numdepth  	192                           	<class 'int'>       
+interval_scale	1.06                          	<class 'float'>     
+loadckpt  	None                          	<class 'NoneType'>  
+logdir    	./checkpoints/refine          	<class 'str'>       
+resume    	False                         	<class 'bool'>      
+summary_freq	20                            	<class 'int'>       
+save_freq 	1                             	<class 'int'>       
+seed      	1                             	<class 'int'>       
+########################################################################
+start at epoch 0
+Number of model parameters: 358195
+Epoch 0:
+Epoch 0/32, Iter 0/99, train loss = 9.671, time = 5.720
+current time 20220505_170433
+creating new summary file
+argv: []
+################################  args  ################################
+mode      	train                         	<class 'str'>       
+model     	mvsnet                        	<class 'str'>       
+dataset   	eth_mvsnet                    	<class 'str'>       
+trainpath 	datasets/MVS_dataset          	<class 'str'>       
+valpath   	datasets/MVS_dataset          	<class 'str'>       
+epochs    	32                            	<class 'int'>       
+lr        	0.0007                        	<class 'float'>     
+lrepochs  	10,12,14:2                    	<class 'str'>       
+wd        	0.0                           	<class 'float'>     
+batch_size	16                            	<class 'int'>       
+numdepth  	192                           	<class 'int'>       
+interval_scale	1.06                          	<class 'float'>     
+loadckpt  	None                          	<class 'NoneType'>  
+logdir    	./checkpoints/refine          	<class 'str'>       
+resume    	False                         	<class 'bool'>      
+summary_freq	20                            	<class 'int'>       
+save_freq 	1                             	<class 'int'>       
+seed      	1                             	<class 'int'>       
+########################################################################
+start at epoch 0
+Number of model parameters: 358195
+Epoch 0:
