@@ -2,7 +2,7 @@
 
 This repository contains the code of course project for CMU-16889 (advised by Shubham Tulsiani).
 
-**NA-MVSNet--A Normal-Aware MVSNet with View-Consistency for Depth Estimation.**
+[**NA-MVSNet--A Normal-Aware MVSNet with View-Consistency for Depth Estimation.**](https://github.com/16889-team/Normal-Aware-MVSNet/blob/main/NA-MVSNet.pdf)
 
 [Dijing Zhang*](https://github.com/dijingzhang)
 [Chenhao Yang*](https://github.com/afiretony)
